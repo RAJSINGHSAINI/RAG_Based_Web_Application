@@ -17,7 +17,6 @@ const OtpForm = ({
   const [localError, setLocalError] = useState("");
 
   const handleChange = (event) => {
-    // Digits only, six at most — matches what the server accepts.
     const digits = event.target.value.replace(/\D/g, "").slice(0, 6);
     setOtp(digits);
     if (localError) setLocalError("");
@@ -35,19 +34,20 @@ const OtpForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       {sentTo && (
-        <p className="muted">
-          We sent a 6-digit code to <strong>{sentTo}</strong>. It expires in 10
-          minutes.
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          We sent a 6-digit code to <strong className="font-semibold text-slate-900 dark:text-white">{sentTo}</strong>. It expires in 10 minutes.
         </p>
       )}
 
-      <div className="field">
-        <label htmlFor="otp">6-digit code</label>
+      <div className="space-y-2">
+        <label htmlFor="otp" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+          6-digit code
+        </label>
         <input
           id="otp"
-          className="otp-input"
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-2xl font-semibold tracking-[0.5rem] text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-indigo-500/20"
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
@@ -57,17 +57,21 @@ const OtpForm = ({
           disabled={busy}
           autoFocus
         />
-        {localError && <span className="field-error">{localError}</span>}
+        {localError && <span className="block text-sm text-rose-600 dark:text-rose-400">{localError}</span>}
       </div>
 
-      <button type="submit" className="btn btn-primary" disabled={busy}>
+      <button
+        type="submit"
+        className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(79,70,229,0.3)] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+        disabled={busy}
+      >
         {busy ? busyLabel : submitLabel}
       </button>
 
       {onResend && (
         <button
           type="button"
-          className="btn btn-link"
+          className="w-full rounded-xl border border-transparent px-2 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200"
           onClick={onResend}
           disabled={busy || resending}
         >

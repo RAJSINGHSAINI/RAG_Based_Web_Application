@@ -7,6 +7,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import redisClient from "./config/redis.js";
+import "./workers/email.worker.js"
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -14,7 +15,6 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-console.log(redisClient);
 
 app.use(cookieParser());
 

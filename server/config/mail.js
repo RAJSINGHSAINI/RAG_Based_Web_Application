@@ -81,10 +81,10 @@ const otpEmailTemplate = ({ heading, message, otp, minutes }) => `
   </div>
 `;
 
-/**
- * One OTP sender reused by the three flows below, which is why the same
- * generateOTP utility and the same email transport serve all of them.
- */
+
+  // One OTP sender reused by the three flows below, which is why the same
+  // generateOTP utility and the same email transport serve all of them.
+ 
 const sendOtpEmail = async ({ to, subject, heading, message, otp, minutes }) => {
   await sendMail({
     to,

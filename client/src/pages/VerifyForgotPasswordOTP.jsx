@@ -56,25 +56,29 @@ const VerifyForgotPasswordOTP = () => {
   };
 
   return (
-    <div className="auth-shell">
-      <div className="card">
-        <h1>Enter your code</h1>
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-8 sm:px-6">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/80 dark:shadow-[0_20px_50px_rgba(2,6,23,0.7)] sm:p-7">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Enter your code</h1>
 
-        <Alert type="success" message={notice} />
-        <Alert message={error} />
+        <div className="mt-5 space-y-3">
+          <Alert type="success" message={notice} />
+          <Alert message={error} />
+        </div>
 
-        <OtpForm
-          sentTo={email}
-          onSubmit={handleVerify}
-          onResend={handleResend}
-          submitLabel="Verify code"
-          busyLabel="Verifying code…"
-          busy={verifying}
-          resending={resending}
-        />
+        <div className="mt-5">
+          <OtpForm
+            sentTo={email}
+            onSubmit={handleVerify}
+            onResend={handleResend}
+            submitLabel="Verify code"
+            busyLabel="Verifying code…"
+            busy={verifying}
+            resending={resending}
+          />
+        </div>
 
-        <p className="card-foot">
-          <Link to="/forgot-password">Use a different email</Link>
+        <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
+          <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">Use a different email</Link>
         </p>
       </div>
     </div>

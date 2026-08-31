@@ -73,18 +73,20 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-shell">
-      <div className="card">
-        <h1>Create your account</h1>
-        <p className="muted">
+    <div className="flex min-h-[70vh] items-center justify-center px-4 py-8 sm:px-6">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.10)] backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/80 dark:shadow-[0_20px_50px_rgba(2,6,23,0.7)] sm:p-7">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Create your account</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           We will email you a 6-digit code to confirm your email address.
         </p>
 
-        <Alert message={serverError} />
+        <div className="mt-5">
+          <Alert message={serverError} />
+        </div>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="field">
-            <label htmlFor="fullName">Full name</label>
+        <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="fullName" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Full name</label>
             <input
               id="fullName"
               name="fullName"
@@ -93,14 +95,15 @@ const Signup = () => {
               value={form.fullName}
               onChange={handleChange}
               disabled={submitting}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-500/20"
             />
             {fieldErrors.fullName && (
-              <span className="field-error">{fieldErrors.fullName}</span>
+              <span className="block text-sm text-rose-600 dark:text-rose-400">{fieldErrors.fullName}</span>
             )}
           </div>
 
-          <div className="field">
-            <label htmlFor="email">Email address</label>
+          <div className="space-y-2">
+            <label htmlFor="email" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Email address</label>
             <input
               id="email"
               name="email"
@@ -109,14 +112,15 @@ const Signup = () => {
               value={form.email}
               onChange={handleChange}
               disabled={submitting}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-500/20"
             />
             {fieldErrors.email && (
-              <span className="field-error">{fieldErrors.email}</span>
+              <span className="block text-sm text-rose-600 dark:text-rose-400">{fieldErrors.email}</span>
             )}
           </div>
 
-          <div className="field">
-            <label htmlFor="password">Password</label>
+          <div className="space-y-2">
+            <label htmlFor="password" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Password</label>
             <input
               id="password"
               name="password"
@@ -125,15 +129,16 @@ const Signup = () => {
               value={form.password}
               onChange={handleChange}
               disabled={submitting}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-500/20"
             />
-            <span className="hint">At least 8 characters.</span>
+            <span className="block text-xs text-slate-500 dark:text-slate-400">At least 8 characters.</span>
             {fieldErrors.password && (
-              <span className="field-error">{fieldErrors.password}</span>
+              <span className="block text-sm text-rose-600 dark:text-rose-400">{fieldErrors.password}</span>
             )}
           </div>
 
-          <div className="field">
-            <label htmlFor="confirmPassword">Confirm password</label>
+          <div className="space-y-2">
+            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-slate-700 dark:text-slate-200">Confirm password</label>
             <input
               id="confirmPassword"
               name="confirmPassword"
@@ -142,19 +147,24 @@ const Signup = () => {
               value={form.confirmPassword}
               onChange={handleChange}
               disabled={submitting}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:border-indigo-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-indigo-500/20"
             />
             {fieldErrors.confirmPassword && (
-              <span className="field-error">{fieldErrors.confirmPassword}</span>
+              <span className="block text-sm text-rose-600 dark:text-rose-400">{fieldErrors.confirmPassword}</span>
             )}
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={submitting}>
+          <button
+            type="submit"
+            className="w-full rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_12px_25px_rgba(79,70,229,0.3)] transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={submitting}
+          >
             {submitting ? "Creating account…" : "Create account"}
           </button>
         </form>
 
-        <p className="card-foot">
-          Already have an account? <Link to="/login">Log in</Link>
+        <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
+          Already have an account? <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-300 dark:hover:text-indigo-200">Log in</Link>
         </p>
       </div>
     </div>

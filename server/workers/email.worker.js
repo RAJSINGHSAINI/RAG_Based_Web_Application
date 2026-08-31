@@ -1,27 +1,46 @@
 import { Worker } from "bullmq";
-import Redis from "ioredis";
-import { sendOtpEmail } from "../config/mail.js"; // Your Nodemailer helper
-
-const redisConnection = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379", {
-  maxRetriesPerRequest: null,
-});
+import redisClient from "../config/redis.js";
+import {
+  sendVerificationOtp,
+  sendForgotPasswordOtp,
+  sendChangeEmailOtp,
+} from "../config/mail.js"; // Imported directly from your mail.js file
 
 const emailWorker = new Worker(
   "emailQueue",
   async (job) => {
-    const { toEmail, otp, type } = job.data;
-    console.log(`[Worker] Processing email for ${toEmail}`);
-    
-    // Call Nodemailer here
-    await sendOtpEmail(toEmail, otp, type);
+    const { type, payload } = job.data;
+    console.log(`[Worker] Processing email job '${type}' for ${payload.to}`);
+
+    switch (type) {
+      case "VERIFICATION_OTP":
+        await sendVerificationOtp(payload); // Expects { to, fullName, otp, minutes }
+        break;
+
+      case "FORGOT_PASSWORD_OTP":
+        await sendForgotPasswordOtp(payload); // Expects { to, otp, minutes }
+        break;
+
+      case "CHANGE_EMAIL_OTP":
+        await sendChangeEmailOtp(payload); // Expects { to, otp, minutes }
+        break;
+
+      default:
+        throw new Error(`Unknown email job type: ${type}`);
+    }
   },
-  { connection: redisConnection, concurrency: 5 } // Process 5 emails in parallel
+  {
+    connection: redisClient,
+    concurrency: 5, // Process 5 emails concurrently
+  }
 );
 
 emailWorker.on("completed", (job) => {
-  console.log(`[Worker] Email successfully sent to ${job.data.toEmail}`);
+  console.log(`[Worker] Email '${job.data.type}' sent to ${job.data.payload.to}`);
 });
 
 emailWorker.on("failed", (job, err) => {
-  console.error(`[Worker] Job ${job.id} failed with error:`, err.message);
+  console.error(`[Worker] Job ${job?.id} failed with error:`, err.message);
 });
+
+export default emailWorker;

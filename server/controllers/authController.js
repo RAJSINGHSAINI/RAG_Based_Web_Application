@@ -8,12 +8,10 @@ import {
   hashResetToken,
   resetTokenExpiry,
 } from "../utils/generateOTP.js";
-import {
-  sendVerificationOtp,
-  sendForgotPasswordOtp,
-  sendChangeEmailOtp,
-} from "../config/mail.js";
 import { setAuthCookie, clearAuthCookie } from "../utils/token.js";
+import { addEmailToQueue } from "../queues/email.queue.js";
+import redisClient from "../config/redis.js";
+import { storeOtpInRedis } from "../services/otp.services.js";
 import {
   isValidEmail,
   isValidOtp,
@@ -30,9 +28,86 @@ const fail = (status, message) => {
   throw error;
 };
 
-/* ------------------------------------------------------------------------- */
-/* Signup                                                                    */
-/* ------------------------------------------------------------------------- */
+const USER_CACHE_TTL_SECONDS = 60;
+const memoryUserCache = new Map();
+const getUserCacheKey = (userId) => `auth:user:${userId}`;
+
+const normalizeCachedUser = (user) => {
+  if (!user) return null;
+  if (user._id) return user;
+
+  return {
+    ...user,
+    _id: user.id,
+  };
+};
+
+const getCachedUser = async (userId) => {
+  if (!userId) return null;
+
+  const cachedMemory = memoryUserCache.get(userId);
+  if (cachedMemory && cachedMemory.expiresAt > Date.now()) {
+    return normalizeCachedUser(cachedMemory.user);
+  }
+
+  if (cachedMemory) memoryUserCache.delete(userId);
+
+  try {
+    const cached = await redisClient.get(getUserCacheKey(userId));
+    if (!cached) return null;
+
+    const user = normalizeCachedUser(JSON.parse(cached));
+    if (!user) return null;
+
+    memoryUserCache.set(userId, {
+      user,
+      expiresAt: Date.now() + USER_CACHE_TTL_SECONDS * 1000,
+    });
+
+    return user;
+  } catch (error) {
+    console.error("Redis user cache read failed:", error.message);
+    return null;
+  }
+};
+
+const setCachedUser = async (user) => {
+  if (!user || !user._id) return;
+
+  const userId = user._id.toString();
+  const safeUser = sanitizeUser(user);
+  const payload = normalizeCachedUser(safeUser);
+
+  memoryUserCache.set(userId, {
+    user: payload,
+    expiresAt: Date.now() + USER_CACHE_TTL_SECONDS * 1000,
+  });
+
+  try {
+    await redisClient.set(
+      getUserCacheKey(userId),
+      JSON.stringify(payload),
+      "EX",
+      USER_CACHE_TTL_SECONDS
+    );
+  } catch (error) {
+    console.error("Redis user cache write failed:", error.message);
+  }
+};
+
+const clearCachedUser = async (userId) => {
+  if (!userId) return;
+
+  memoryUserCache.delete(userId);
+
+  try {
+    await redisClient.del(getUserCacheKey(userId));
+  } catch (error) {
+    console.error("Redis user cache delete failed:", error.message);
+  }
+};
+
+//  Signup                                                                    */
 
 // POST /api/auth/signup
 export const signup = asyncHandler(async (req, res) => {
@@ -66,15 +141,16 @@ export const signup = asyncHandler(async (req, res) => {
   });
 
   try {
-    await sendVerificationOtp({
-      to: user.email,
+    await storeOtpInRedis(email, otp, "verify-email");
+    await addEmailToQueue("VERIFICATION_OTP", {
+      to: email,
       fullName: user.fullName,
       otp,
       minutes: OTP_EXPIRY_MINUTES,
     });
+    await setCachedUser(user);
   } catch (err) {
-    // The account exists, so tell the client to move on to verification and
-    // request a fresh code rather than silently failing.
+    console.error("Signup OTP dispatch failed:", err.message);
     return res.status(201).json({
       success: true,
       requiresVerification: true,
@@ -92,9 +168,7 @@ export const signup = asyncHandler(async (req, res) => {
   });
 });
 
-/* ------------------------------------------------------------------------- */
 /* Email verification                                                        */
-/* ------------------------------------------------------------------------- */
 
 // POST /api/auth/verify-email
 export const verifyEmail = asyncHandler(async (req, res) => {
@@ -165,7 +239,8 @@ export const resendVerificationOtp = asyncHandler(async (req, res) => {
   user.otpPurpose = "verify-email";
   await user.save();
 
-  await sendVerificationOtp({
+  await storeOtpInRedis(user.email, otp, "verify-email");
+  await addEmailToQueue("VERIFICATION_OTP", {
     to: user.email,
     fullName: user.fullName,
     otp,
@@ -175,9 +250,7 @@ export const resendVerificationOtp = asyncHandler(async (req, res) => {
   return res.status(200).json(genericReply);
 });
 
-/* ------------------------------------------------------------------------- */
 /* Login / logout / session                                                  */
-/* ------------------------------------------------------------------------- */
 
 // POST /api/auth/login
 export const login = asyncHandler(async (req, res) => {
@@ -208,6 +281,7 @@ export const login = asyncHandler(async (req, res) => {
   // The JWT goes straight into an HTTP-only cookie. It is never part of the
   // JSON body, so client-side JavaScript never holds the token.
   setAuthCookie(res, user._id);
+  await setCachedUser(user);
 
   return res.status(200).json({
     success: true,
@@ -218,18 +292,26 @@ export const login = asyncHandler(async (req, res) => {
 
 // GET /api/auth/me  (protected)
 export const getCurrentUser = asyncHandler(async (req, res) => {
-  res.status(200).json({ success: true, user: sanitizeUser(req.user) });
+  const userFromCache = req.user && req.user._id ? await getCachedUser(req.user._id.toString()) : null;
+
+  if (userFromCache) {
+    return res.status(200).json({ success: true, user: userFromCache, fromCache: true });
+  }
+
+  const user = req.user && req.user._id ? sanitizeUser(req.user) : req.user;
+  await setCachedUser(req.user);
+  return res.status(200).json({ success: true, user, fromCache: false });
 });
 
 // POST /api/auth/logout
 export const logout = asyncHandler(async (req, res) => {
+  const userId = req.user?._id?.toString();
   clearAuthCookie(res);
+  await clearCachedUser(userId);
   res.status(200).json({ success: true, message: "Logged out" });
 });
 
-/* ------------------------------------------------------------------------- */
 /* Forgot password                                                           */
-/* ------------------------------------------------------------------------- */
 
 // POST /api/auth/forgot-password
 export const forgotPassword = asyncHandler(async (req, res) => {
@@ -254,7 +336,8 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   user.resetTokenExpiresAt = undefined;
   await user.save();
 
-  await sendForgotPasswordOtp({
+  await storeOtpInRedis(user.email, otp, "forgot-password");
+  await addEmailToQueue("FORGOT_PASSWORD_OTP", {
     to: user.email,
     otp,
     minutes: OTP_EXPIRY_MINUTES,
@@ -349,9 +432,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-/* ------------------------------------------------------------------------- */
 /* Profile                                                                   */
-/* ------------------------------------------------------------------------- */
 
 // GET /api/auth/profile  (protected)
 export const getProfile = asyncHandler(async (req, res) => {
@@ -402,16 +483,16 @@ export const requestChangeEmail = asyncHandler(async (req, res) => {
   // Send before saving: if the email cannot be delivered, no pending change is
   // recorded. Writing these three fields also replaces — and therefore
   // invalidates — any pending change from an earlier request.
-  await sendChangeEmailOtp({
-    to: newEmail,
-    otp,
-    minutes: OTP_EXPIRY_MINUTES,
-  });
-
   req.user.pendingEmail = newEmail;
   req.user.pendingEmailOtp = otp;
   req.user.pendingEmailOtpExpiresAt = otpExpiry();
   await req.user.save();
+
+  await addEmailToQueue("CHANGE_EMAIL_OTP", {
+    to: newEmail,
+    otp,
+    minutes: OTP_EXPIRY_MINUTES,
+  });
 
   return res.status(200).json({
     success: true,
